@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using AspNet.Security.ApiKey.Providers.Events;
 using AspNet.Security.ApiKey.Providers.Extensions;
+using AspNet.Security.ApiKey.Providers.Web.Policies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -48,22 +49,14 @@ namespace AspNet.Security.ApiKey.Providers.Web
                         },
                         OnApiKeyValidated = context =>
                         {
-                            if (context.ApiKey == "123")
+                            var identity = new ClaimsIdentity(new[]
                             {
-                                var identity = new ClaimsIdentity(new[]
-                                {
-                                    new Claim(ClaimTypes.Name, "Fred")
-                                });
+                                new Claim("ApiKey", context.ApiKey)
+                            });
 
-                                context.Principal.AddIdentity(identity);
-
-                                context.Success();
-                            }
-                            else if (context.ApiKey == "789")
-                            {
-                                context.Fail(new NotSupportedException("You must upgrade."));
-                            }
-
+                            context.Principal.AddIdentity(identity);
+                            context.Success();
+                           
                             return Task.CompletedTask;
                         },
                         OnChallenge = context =>
@@ -77,6 +70,16 @@ namespace AspNet.Security.ApiKey.Providers.Web
                         }
                     };
                 });
+
+
+            // Define Authorization: the ApiKey from the authentication is asserted using policy
+            services.AddAuthorization(options =>
+            {
+                // Define a API key for DeviceScanResult resource
+                options.AddPolicy("ApiKeyPolicy", 
+                    policyBuilder => policyBuilder
+                        .AddRequirements(new ApiKeyRequirement("123"))); 
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
